@@ -1,7 +1,6 @@
 library(tidyverse)
 library(stringr)
 library(seqinr)
-#library(cowplot)
 
 path_to_files = "/Volumes/huber.michael/Diagnostics/experiments/HCV_Sanger_Validation/data/"
 
@@ -46,7 +45,7 @@ disambiguate <- function(nuc_list) {
                         out = rbind(out, data.frame(pos = i, nt = "C"))
                         out = rbind(out, data.frame(pos = i, nt = "G"))
                 }
-                else if (nuc_list[i] == "W" ){
+                else if (nuc_list[i] == "V" ){
                         out = rbind(out, data.frame(pos = i, nt = "A"))
                         out = rbind(out, data.frame(pos = i, nt = "G"))
                         out = rbind(out, data.frame(pos = i, nt = "C"))
@@ -79,20 +78,7 @@ for (i in files) {
         write.fasta(paste(out_fasta$nt, collapse = ""), name_i, paste0(path_to_files, name_i, "_disamb.fasta"))
         }
 
-
-
-
-
-
-
-
-
 ### Alignement of NGS reads to Sanger consensus
-
-
-
-
-
 
 
 
@@ -102,6 +88,7 @@ for (i in files) {
 all_data=data.frame()
 files = list.files(path_to_files, pattern = "lofreq.vcf")
 for (i in files) {
+        #if(i != "1000338554_lofreq.vcf") {next}
         name_i = gsub("_lofreq.vcf", "", i)
         
         vcf_file = paste0(path_to_files, name_i, "_lofreq.vcf")
@@ -138,34 +125,43 @@ for (i in files) {
         comb_data_2 = gather(comb_data, "ref_alt", "nt", 1:4, -REF, -POS, -AF, -COV, na.rm = TRUE) %>%
                 select(ref_alt, POS, nt, AF, COV) %>%
                 group_by(POS) %>%
+                distinct(POS, nt, ref_alt, .keep_all = TRUE) %>%
+                mutate(AF = ifelse(ref_alt == "CONS", 0, AF)) %>%
                 mutate(sum_AF = sum(AF)) %>%
-                mutate(AF2 = ifelse(ref_alt == "CONS", 100 - sum_AF + AF, AF)) %>%
-                rename(FREQ = AF2) %>%
+                mutate(FREQ = ifelse(ref_alt == "CONS", 100 - sum_AF, AF)) %>%
                 rename(pos = POS) %>%
                 select(-AF, -sum_AF, -ref_alt) %>%
                 mutate(FREQ = ifelse(is.na(FREQ), 100, FREQ))
         
         master_table = full_join(o, comb_data_2, by = c("pos", "nt")) %>%
                 mutate(Sanger = ifelse(is.na(Sanger), FALSE, Sanger)) %>%
-                mutate(sample = name_i)
+                mutate(sample = name_i) %>%
+                mutate(FREQ = ifelse(is.na(FREQ), 0, FREQ)) ### found by Sanger but not by NGS (false positive)
         
-   
+        
         all_data = rbind(all_data, master_table)
 }
 
+write.csv(all_data, paste0(path_to_files, "HCV_Sanger_validation.csv"))
+
 ### Plot
-p = ggplot(all_data, aes(x=FREQ, y=Sanger, color = sample)) +
+p1 = all_data %>%
+        #filter(FREQ <= 50) %>%
+        ggplot(aes(x=FREQ, y=Sanger, color = sample)) +
+        geom_jitter() +
+        theme(legend.position = "") +
+        geom_vline(xintercept=15, color = "darkgrey")
+p1
+
+p2 = all_data %>%
+        #filter(FREQ <= 50) %>%
+        ggplot(aes(x=FREQ, y=Sanger, color = sample)) +
         geom_point(size = 0.5) +
         facet_wrap( ~ sample ) +
         theme(legend.position = "") +
-        xlim(0, 100) +
-        geom_vline(xintercept=15, color = "black") +
-        #panel_border() + 
-        #background_grid(major = "xy", minor = "") +
-        theme(axis.title = element_text(size = 7.5)) +
-        theme(axis.text  = element_text(size = 7.5, face = "plain")) +
-        theme(strip.text = element_text(size = 7.5, face = "plain")) +
-        theme(legend.title = element_text(size = 0, face = "plain")) +
-        theme(legend.text = element_text(size = 7.5))
-p
-ggsave(paste0(path_to_files, "Figure_HCV_Sanger_validation.pdf"), p, width = 30/2.54, height = 21/2.54)
+        geom_vline(xintercept=15, color = "darkgrey")
+p2
+
+ggsave(paste0(path_to_files, "Figure_HCV_Sanger_validation_all.pdf"), p1, width = 30/2.54, height = 21/2.54)
+ggsave(paste0(path_to_files, "Figure_HCV_Sanger_validation_facet.pdf"), p2, width = 30/2.54, height = 21/2.54)
+
