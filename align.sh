@@ -3,13 +3,13 @@
 n_reads=200000
 
 ### make list of files to analyse
-list=$(ls | grep _NS5A_disamb.fasta)
+list=$(ls ./*_NS5A_disamb.fasta)
 
 ### loop over list	
 for i in $list; do
 	ref=$i
 	name=$(basename $i | sed 's/_NS5A_disamb.fasta//')
-	fastq_file=$(ls | grep $name | grep -v _NS5A | grep -v _reads.fastq)
+	fastq_file=$(ls ./*gz | grep $name)
 
 	seqtk sample $fastq_file $n_reads > ${name}_reads.fastq
 	n_sample=$(wc -l ${name}_reads.fastq | cut -f 1 -d " ")
@@ -27,11 +27,10 @@ for i in $list; do
 	fi
 		
 	### align with smalt to reference ${name}_reads.fastq
-	smalt index -k 7 -s 2 ${name}_smalt_index $ref
+	bwa index $ref
 	samtools faidx $ref
-	smalt map -n 28 -x -y 0.5 -f samsoft -o ${name}.sam ${name}_smalt_index ${name}_reads.fastq
-	samtools view -Su ${name}.sam | samtools sort - ${name}
-	samtools index ${name}.bam	
+	bwa mem -t 12 $ref ${name}_reads.fastq | samtools view -u -@ 4 - | samtools sort -@ 4 -O bam -T tmp -o ${name}.bam -
+	samtools index ${name}.bam
 
 	### create vcf with lofreq
 	rm -f ${name}_lofreq.vcf
