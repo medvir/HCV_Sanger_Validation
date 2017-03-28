@@ -5,6 +5,9 @@ n_reads=200000
 ### make list of files to analyse
 list=$(ls ./*_NS5A_disamb.fasta)
 
+#list=("1000282841_NS5A_disamb.fasta 1000335797_NS5A_disamb.fasta 1000336164_NS5A_disamb.fasta")
+
+
 ### loop over list	
 for i in $list; do
 	ref=$i

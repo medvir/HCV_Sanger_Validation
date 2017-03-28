@@ -67,7 +67,7 @@ disambiguate <- function(nuc_list) {
 
 
 ### Loop over all Sanger fasta files
-files = list.files(path_to_files, pattern = ".fasta")
+files = list.files(path_to_files, pattern = "NS5A.fasta")
 
 for (i in files) {
         name_i = gsub(".fasta", "", i)
@@ -88,7 +88,7 @@ for (i in files) {
 all_data=data.frame()
 files = list.files(path_to_files, pattern = "lofreq.vcf")
 for (i in files) {
-        #if(i != "1000338554_lofreq.vcf") {next}
+        #if(i != "1000278624_lofreq.vcf") {next}
         name_i = gsub("_lofreq.vcf", "", i)
         
         vcf_file = paste0(path_to_files, name_i, "_lofreq.vcf")
@@ -146,7 +146,6 @@ write.csv(all_data, paste0(path_to_files, "HCV_Sanger_validation.csv"))
 
 ### Plot
 p1 = all_data %>%
-        #filter(FREQ <= 50) %>%
         ggplot(aes(x=FREQ, y=Sanger, color = sample)) +
         geom_jitter() +
         theme(legend.position = "") +
@@ -154,7 +153,6 @@ p1 = all_data %>%
 p1
 
 p2 = all_data %>%
-        #filter(FREQ <= 50) %>%
         ggplot(aes(x=FREQ, y=Sanger, color = sample)) +
         geom_point(size = 0.5) +
         facet_wrap( ~ sample ) +
